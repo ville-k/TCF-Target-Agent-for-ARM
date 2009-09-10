@@ -290,6 +290,151 @@ static int trace_stack(Context * ctx) {
     return 0;
 }
 
+#elif defined(__ARMEL__)
+#warning "ARMEL PORT stack trace, please implement"
+#define MAX_FRAMES  1000
+
+#define ARM_B  0xEB000000
+#define ARM_BL 0xEA000000
+#define ARM_BX 0xE12FFF10
+
+static void arm_print_frame(StackFrame * f) {
+	
+	trace(LOG_ALWAYS, "FRAME>>>>>>>>>>");
+	trace(LOG_ALWAYS, "fp = %p", f->fp);
+	trace(LOG_ALWAYS, "ip = %p", f->ip);
+	trace(LOG_ALWAYS, "rp = %p", f->rp);
+	trace(LOG_ALWAYS, "<<<<<<<<<<<<<<<");
+}
+
+static ContextAddress trace_jump(Context * ctx, ContextAddress addr) {
+    int cnt = 0;
+    trace(LOG_ALWAYS, "trace_jump:");
+
+    /* while instruction is a JMP, get destination adrs */
+    while (cnt < 100) {
+        unsigned long instr;    /* instruction opcode at <addr> */
+        ContextAddress dest;    /* Jump destination address */
+
+    	trace(LOG_ALWAYS, "%d: trace_jump:", cnt);
+
+        if (read_mem(ctx, addr, &instr, 4) < 0) {
+	        trace(LOG_ALWAYS, "trace_jump: read_mem failed");	
+		break;
+	}
+
+
+        if (((instr & 0xFF000000) == ARM_BL) ||
+	    ((instr & 0xFF000000) == ARM_B)) {
+	    // Branch or
+            // Branch with Link
+            ContextAddress ptr;
+
+	    // Shift and sign extend
+            unsigned long offset = (instr & 0x00FFFFFF) << 2;
+	    if (offset & 0x02000000) {
+                offset | 0xFC000000;
+	    }
+            trace(LOG_ALWAYS, "trace_jump: found jump/branch");
+	    dest = addr + offset;
+        }
+	else if ((instr & 0xFFFFFFF0) == ARM_BX) {
+            trace(LOG_ALWAYS, "trace_jump: found BX");
+ 	    unsigned regnum = (instr & 0x0000000F);
+	    // XXX oh crap... do we need to keep track of the regs?
+	    break;
+	}
+        else {
+
+            break;
+        }
+        if (dest == addr) break;
+        addr = dest;
+        cnt++;
+    }
+    
+    trace(LOG_ALWAYS, "trace_jump: EXIT (cnt = %d), returning addr=%p", cnt, addr);
+    return addr;
+}
+
+static int trace_stack(Context * ctx) {
+        trace(LOG_ALWAYS, "trace_stack: ENTER");
+
+	ContextAddress pc = get_regs_PC(ctx->regs);
+	ContextAddress fp = get_regs_BP(ctx->regs);
+	ContextAddress fp_prev = 0;
+
+	ContextAddress addr = trace_jump(ctx, pc);
+	ContextAddress plt = is_plt_section(ctx, addr);
+	unsigned char code[4];
+	unsigned cnt = 0;
+ 	trace(LOG_ALWAYS, "trace_stack: pc=%d, fp=%p", pc, fp);
+
+	if (plt) {
+        	trace(LOG_ALWAYS, "trace_stack: inside PLT entry");
+
+		fp_prev = fp;
+		if (addr - plt == 0) {
+			fp = get_regs_SP(ctx->regs);
+		}
+		else if (addr - plt < 16) {
+			fp = get_regs_SP(ctx->regs) + 4;
+		}
+		else if ((addr - plt) % 16 < 8) {
+			fp = get_regs_SP(ctx->regs) - 4;
+		}
+		else {
+			fp = get_regs_SP(ctx->regs);
+		}
+	}
+	else {
+	        trace(LOG_ALWAYS, "trace_stack: not inside PLT entry");
+	}
+
+	while (cnt < MAX_FRAMES) {
+	        trace(LOG_ALWAYS, "trace_stack: look start: fp = %p, pc = %X", fp, pc);
+		ContextAddress frame[4];
+		ContextAddress fp_next;
+		
+		StackFrame f;
+		memset(&f, 0, sizeof(f));
+		f.ip = pc;
+		
+		if (fp == 0) {
+                        trace(LOG_ALWAYS, "trace_stack: fp == 0, adding a frame");
+			arm_print_frame(&f);
+			add_frame(ctx, &f);
+			break;
+		}
+		
+		if (read_mem(ctx, fp - 12, frame, sizeof(frame)) < 0) {
+		        trace(LOG_ALWAYS, "trace_stack: read_mem failed,  returning -1");
+			return -1;
+		}
+		f.fp = fp;
+		f.rp = frame[2];
+
+		//arm_print_frame(&f);
+
+		add_frame(ctx, &f);
+		
+		cnt++;
+		
+		fp_next = fp_prev != 0 ? fp_prev : frame[0];
+		fp_prev = 0;
+		if (fp_next <= fp) {
+		        trace(LOG_ALWAYS, "trace_stack: fp_next <= fp, breaking");
+			break;
+		}
+		
+		fp = fp_next;
+		pc = f.rp;
+	}
+
+	trace(LOG_ALWAYS, "trace_stack: EXIT");
+	return 0;
+}
+
 #else
 
 #error "Unknown CPU"

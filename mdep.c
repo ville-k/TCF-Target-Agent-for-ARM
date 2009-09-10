@@ -864,6 +864,8 @@ void ini_mdep(void) {
 
 #if defined(__i386__) || defined(__x86_64__)
 unsigned char BREAK_INST[] = { 0xcc };
+#elif defined(__ARMEL__)
+unsigned char BREAK_INST[] = { 0xf0, 0x01, 0xf0, 0xe7 };
 #else
 #error "Unknown CPU"
 #endif

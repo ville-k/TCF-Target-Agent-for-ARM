@@ -216,6 +216,11 @@ static int get_register(Context * Ctx, int Frame, unsigned rg, U8_T * value) {
         *value = IP;
         return 0;
     }
+#elif defined(__linux__) && defined(__ARMEL__)
+    if (rg >= 0 && rg <= 15) {
+         *value = Ctx->regs.uregs[rg];
+         return 0;
+    }
 #else
 #error "Unknown DWARF registers mapping"
 #endif
@@ -352,6 +357,11 @@ static int set_register(Context * Ctx, int Frame, unsigned rg, U8_T value) {
             Ctx->regs.__eflags = (unsigned long)value;
             return 0;
         }
+    }
+#elif defined(__linux__) && defined(__ARMEL__)
+    if (rg >= 0 && rg <= 15) {
+        Ctx->regs.uregs[rg] = (unsigned long)value;
+        return 0;
     }
 #else
 #error "Unknown DWARF registers mapping"

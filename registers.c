@@ -117,6 +117,24 @@ static REG_INDEX regs_index[] = {
     { "eax",    REG_OFFSET(eax),    4},
     { "eflags", REG_OFFSET(eflags), 4},
     { "eip",    REG_OFFSET(eip),    4},
+#elif defined(__ARMEL__)
+#warning "ARMEL port stub for regs_index"
+    { "r0",     REG_OFFSET(uregs[0]),  4},
+    { "r1",     REG_OFFSET(uregs[1]),  4},
+    { "r2",     REG_OFFSET(uregs[2]),  4},
+    { "r3",     REG_OFFSET(uregs[3]),  4},
+    { "r4",     REG_OFFSET(uregs[4]),  4},
+    { "r5",     REG_OFFSET(uregs[5]),  4},
+    { "r6",     REG_OFFSET(uregs[6]),  4},
+    { "r7",     REG_OFFSET(uregs[7]),  4},
+    { "r8",     REG_OFFSET(uregs[8]),  4},
+    { "r9",     REG_OFFSET(uregs[9]),  4},
+    { "r10",     REG_OFFSET(uregs[10]),  4},
+    { "r11",     REG_OFFSET(uregs[11]),  4},
+    { "r12",     REG_OFFSET(uregs[12]),  4},
+    { "r13",     REG_OFFSET(uregs[13]),  4},
+    { "r14",     REG_OFFSET(uregs[14]),  4},
+    { "r15",     REG_OFFSET(uregs[15]),  4},
 #else
 #  error "Unknown CPU"
 #endif

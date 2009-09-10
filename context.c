@@ -474,8 +474,13 @@ static void event_win32_context_stopped(Context * ctx) {
         ctx->pending_step = 0;
         break;
     case EXCEPTION_BREAKPOINT:
+#if defined(__ARMEL__)
+        if (!ctx->regs_error && is_breakpoint_address(ctx, get_regs_PC(ctx->regs))) {
+            set_regs_PC(ctx->regs, get_regs_PC(ctx->regs));
+#else
         if (!ctx->regs_error && is_breakpoint_address(ctx, get_regs_PC(ctx->regs) - BREAK_SIZE)) {
             set_regs_PC(ctx->regs, get_regs_PC(ctx->regs) - BREAK_SIZE);
+#endif
             ctx->regs_dirty = 1;
             ctx->stopped_by_bp = 1;
         }
@@ -1934,13 +1939,22 @@ static void event_pid_stopped(pid_t pid, int signal, int event, int syscall) {
             ctx->stopped_by_bp = 0;
             ctx->end_of_step = 0;
             if (ctx->signal == SIGTRAP && ctx->ptrace_event == 0 && !syscall) {
+#if defined(__ARMEL__)
+                ctx->stopped_by_bp = !ctx->regs_error &&
+                    is_breakpoint_address(ctx, get_regs_PC(ctx->regs));
+#else
                 ctx->stopped_by_bp = !ctx->regs_error &&
                     is_breakpoint_address(ctx, get_regs_PC(ctx->regs) - BREAK_SIZE);
+#endif
                 ctx->end_of_step = !ctx->stopped_by_bp && ctx->pending_step;
             }
             ctx->pending_step = 0;
             if (ctx->stopped_by_bp) {
+#if defined(__ARMEL__)
+                set_regs_PC(ctx->regs, get_regs_PC(ctx->regs));
+#else
                 set_regs_PC(ctx->regs, get_regs_PC(ctx->regs) - BREAK_SIZE);
+#endif
                 ctx->regs_dirty = 1;
             }
             event_context_stopped(ctx);
@@ -2421,6 +2435,8 @@ static void event_pid_exited(pid_t pid, int status, int signal) {
 #   define get_syscall_id(ctx) (ctx->regs.orig_rax)
 #elif defined(__i386__)
 #   define get_syscall_id(ctx) (ctx->regs.orig_eax)
+#elif __ARMEL__
+#   define get_syscall_id(ctx) (ctx->regs.uregs[7])
 #else
 #   error "get_syscall_id() is not implemented for CPU other then X86"
 #endif
@@ -2617,13 +2633,22 @@ static void event_pid_stopped(pid_t pid, int signal, int event, int syscall) {
             ctx->stopped_by_bp = 0;
             ctx->end_of_step = 0;
             if (ctx->signal == SIGTRAP && ctx->ptrace_event == 0 && !syscall) {
+#if defined(__ARMEL__)
+                ctx->stopped_by_bp = !ctx->regs_error &&
+                    is_breakpoint_address(ctx, get_regs_PC(ctx->regs));
+#else
                 ctx->stopped_by_bp = !ctx->regs_error &&
                     is_breakpoint_address(ctx, get_regs_PC(ctx->regs) - BREAK_SIZE);
+#endif
                 ctx->end_of_step = !ctx->stopped_by_bp && ctx->pending_step;
             }
             ctx->pending_step = 0;
             if (ctx->stopped_by_bp) {
+#if defined(__ARMEL__)
+                set_regs_PC(ctx->regs, get_regs_PC(ctx->regs));
+#else
                 set_regs_PC(ctx->regs, get_regs_PC(ctx->regs) - BREAK_SIZE);
+#endif
                 ctx->regs_dirty = 1;
             }
             event_context_stopped(ctx);

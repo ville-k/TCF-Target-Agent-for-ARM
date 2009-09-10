@@ -436,6 +436,14 @@ extern char **environ;
 #include <stdint.h>
 
 #include <sys/user.h>
+
+#if defined(__ARMEL__)
+typedef struct user_regs REG_SET;
+#define get_regs_SP(x) ((x).uregs[13])
+#define get_regs_BP(x) ((x).uregs[11])
+#define get_regs_PC(x) ((x).uregs[15])
+#define set_regs_PC(x,y) (x).uregs[15] = (unsigned long)(y)
+#else
 typedef struct user_regs_struct REG_SET;
 #if __WORDSIZE == 64
 #  define get_regs_SP(x) ((x).rsp)
@@ -447,6 +455,7 @@ typedef struct user_regs_struct REG_SET;
 #  define get_regs_BP(x) ((x).ebp)
 #  define get_regs_PC(x) ((x).eip)
 #  define set_regs_PC(x,y) (x).eip = (unsigned long)(y)
+#endif
 #endif
 
 #define loc_freeaddrinfo freeaddrinfo
